@@ -247,7 +247,7 @@ tasks:
         kubectl apply -f deploy/nuvolaris-permissions
         rm -f _failed.txt
         for test in tests/{{.T}}*.ipy tests/{{.KUBE}}/{{.T}}*.ipy
-        do  
+        do
             if test -e "$test"
             then  echo "*** [{{.KUBE}}] $test"
                   rm -f deploy/*/kustomization.yaml deploy/*/__*
@@ -261,6 +261,32 @@ tasks:
         if test -e _failed.txt
         then  echo "*** FAILED TESTS:"
               cat _failed.txt
+        fi
+    silent: true
+
+  itest-group:
+    desc: "Run integration tests for a specific group (CI parallel execution)"
+    cmds:
+      - task: iclean
+      - |
+        kubectl apply -f deploy/nuvolaris-permissions
+        rm -f _failed.txt
+        for test in {{.TESTS}}
+        do
+            if test -e "$test"
+            then  echo "*** [{{.KUBE}}] $test"
+                  rm -f deploy/*/kustomization.yaml deploy/*/__*
+                  if poetry run ipython $test {{.CLI_ARGS}}
+                  then  echo "OK: $test"
+                  else  echo "FAIL: $test"
+                        echo $test >>_failed.txt
+                  fi
+            fi
+        done
+        if test -e _failed.txt
+        then  echo "*** FAILED TESTS:"
+              cat _failed.txt
+              exit 1
         fi
     silent: true
 

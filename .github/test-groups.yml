@@ -1,0 +1,86 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+# Group tests by primary K8s component dependency.
+# Each group gets its own Kind cluster and runs in parallel.
+
+groups:
+  stateless:
+    # Tests that don't deploy heavy K8s resources
+    - tests/config_test.ipy
+    - tests/main_test.ipy
+    - tests/kind/bcrypt_util_test.ipy
+    - tests/kind/config_user_test.ipy
+    - tests/kind/runtimes_preloader_test.ipy
+
+  couchdb:
+    # CouchDB-dependent tests
+    - tests/couchdb_test.ipy
+    - tests/kind/action_executor_test.ipy
+    - tests/kind/couchdb_compactions_test.ipy
+    - tests/kind/couchdb_lib_test.ipy
+    - tests/kind/couchdb_util_test.ipy
+    - tests/kind/dbinit.ipy
+    - tests/kind/nuvolaris_subject_test.ipy
+    - tests/kind/userdb_util_test.ipy
+    - tests/kind/wskadmin.ipy
+
+  storage:
+    # MinIO + SeaweedFS + Registry tests
+    - tests/kind/minio_test.ipy
+    - tests/kind/minio_util_test.ipy
+    - tests/kind/minio_quota_test.ipy
+    - tests/kind/minio_static_test.ipy
+    - tests/kind/seaweedfs_test.ipy
+    - tests/kind/registry_test.ipy
+
+  databases:
+    # MongoDB + Postgres + FerretDB tests
+    - tests/kind/mongodb_std_test.ipy
+    - tests/kind/mongodb_op_test.ipy
+    - tests/kind/mongodb_user_test.ipy
+    - tests/kind/postgres_op_test.ipy
+    - tests/kind/ferretdb_test.ipy
+
+  keyvalue:
+    # Redis + KVRocks + etcd tests
+    - tests/redis_test.ipy
+    - tests/redis_user_test.ipy
+    - tests/kvrocks_test.ipy
+    - tests/kvrocks_user_test.ipy
+    - tests/etcd_test.ipy
+
+  enterprise:
+    # Kafka + Zookeeper + Invoker + OpenWhisk + Monitoring
+    - tests/zookeeper_test.ipy
+    - tests/kafka_test.ipy
+    - tests/invoker_test.ipy
+    - tests/kind/openwhisk_enterprise_test.ipy
+    - tests/kind/monitoring_test.ipy
+
+  vector:
+    # Milvus (requires etcd + MinIO + Milvus)
+    - tests/kind/milvus_standalone_test.ipy
+    - tests/kind/milvus_standalone_slim_test.ipy
+
+  misc:
+    # Remaining tests
+    - tests/cron_test.ipy
+    - tests/quota_checker_test.ipy
+    - tests/volume_test.ipy
+    - tests/workflows_test.ipy
+    - tests/kind/config_test.ipy

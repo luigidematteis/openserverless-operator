@@ -17,41 +17,91 @@
 #
 
 name: openserverless-operator-check
-on: 
+on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
 
 jobs:
-  check:
-    name: Check OpenServerless Operator
+  license-and-unit:
+    name: License & Unit Tests
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
         uses: actions/checkout@v2
         with:
           submodules: recursive
-      - name: License   
+      - name: License
         uses: apache/skywalking-eyes@main
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.12
+      - name: Setup
+        run: bash .github/cisetup.sh
+      - name: Install
+        run: task setup
+      - name: Unit Test
+        run: task utest
+        continue-on-error: false
+
+  integration-test:
+    name: "itest (${{ matrix.group }})"
+    needs: license-and-unit
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: stateless
+            needs-kind: false
+            tests: "tests/config_test.ipy tests/main_test.ipy tests/kind/bcrypt_util_test.ipy tests/kind/config_user_test.ipy tests/kind/runtimes_preloader_test.ipy"
+          - group: couchdb
+            needs-kind: true
+            tests: "tests/couchdb_test.ipy tests/kind/action_executor_test.ipy tests/kind/couchdb_compactions_test.ipy tests/kind/couchdb_lib_test.ipy tests/kind/couchdb_util_test.ipy tests/kind/dbinit.ipy tests/kind/nuvolaris_subject_test.ipy tests/kind/userdb_util_test.ipy tests/kind/wskadmin.ipy"
+          - group: storage
+            needs-kind: true
+            tests: "tests/kind/minio_test.ipy tests/kind/minio_util_test.ipy tests/kind/minio_quota_test.ipy tests/kind/minio_static_test.ipy tests/kind/seaweedfs_test.ipy tests/kind/registry_test.ipy"
+          - group: databases
+            needs-kind: true
+            tests: "tests/kind/mongodb_std_test.ipy tests/kind/mongodb_op_test.ipy tests/kind/mongodb_user_test.ipy tests/kind/postgres_op_test.ipy tests/kind/ferretdb_test.ipy"
+          - group: keyvalue
+            needs-kind: true
+            tests: "tests/redis_test.ipy tests/redis_user_test.ipy tests/kvrocks_test.ipy tests/kvrocks_user_test.ipy tests/etcd_test.ipy"
+          - group: enterprise
+            needs-kind: true
+            tests: "tests/zookeeper_test.ipy tests/kafka_test.ipy tests/invoker_test.ipy tests/kind/openwhisk_enterprise_test.ipy tests/kind/monitoring_test.ipy"
+          - group: vector
+            needs-kind: true
+            tests: "tests/kind/milvus_standalone_test.ipy tests/kind/milvus_standalone_slim_test.ipy"
+          - group: misc
+            needs-kind: true
+            tests: "tests/cron_test.ipy tests/quota_checker_test.ipy tests/volume_test.ipy tests/workflows_test.ipy tests/kind/config_test.ipy"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Assign TAG from pull request
-        if:  ${{ github.event_name == 'pull_request' }}
+        if: ${{ github.event_name == 'pull_request' }}
         run: |
           echo "IMG_TAG=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
       - name: Assign TAG from push
-        if:  ${{ github.event_name != 'pull_request' }}
+        if: ${{ github.event_name != 'pull_request' }}
         run: |
-          echo "IMG_TAG=$(git describe --tags --abbrev=0)" >> "$GITHUB_ENV"        
+          echo "IMG_TAG=$(git describe --tags --abbrev=0)" >> "$GITHUB_ENV"
       - name: Assign Custom Image Name
-        if:  ${{ github.repository_owner != 'apache'}}
+        if: ${{ github.repository_owner != 'apache' }}
         run: |
-          echo "MY_OPERATOR_IMAGE=${{ vars.MY_OPERATOR_IMAGE }}" >> "$GITHUB_ENV"       
+          echo "MY_OPERATOR_IMAGE=${{ vars.MY_OPERATOR_IMAGE }}" >> "$GITHUB_ENV"
       - name: Kind
+        if: ${{ matrix.needs-kind }}
         uses: container-tools/kind-action@v2.0.4
         with:
-              version: v0.22.0
-              cluster_name: nuvolaris
-              config: .github/kind.yaml
+          version: v0.22.0
+          cluster_name: nuvolaris
+          config: .github/kind.yaml
       - name: Set up Python 3.12
         uses: actions/setup-python@v4
         with:
@@ -61,8 +111,10 @@ jobs:
       - name: Install
         run: task setup
       - name: BuildAndLoad
+        if: ${{ matrix.needs-kind }}
         run: task build-and-load TAG="$IMG_TAG"
       - name: AddIngress
+        if: ${{ matrix.needs-kind }}
         run: task kind:ingress
       - name: Ngrok
         if: ${{ env.NGROK == 'on' }}
@@ -72,10 +124,7 @@ jobs:
           USER_PASS: ${{ secrets.USER_PASS }}
       - name: Wait
         if: ${{ env.NGROK == 'on' }}
-        run: bash .github/wait.sh               
-      - name: Unit Test
-        run: task utest
-        continue-on-error: false
+        run: bash .github/wait.sh
       - name: Integration Test
-        run: task itest
-        continue-on-error: false        
+        run: task itest-group TESTS="${{ matrix.tests }}"
+        continue-on-error: false
