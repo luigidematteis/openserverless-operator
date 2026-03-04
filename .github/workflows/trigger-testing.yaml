@@ -16,6 +16,7 @@
 # under the License.
 #
 # Small comment to trigger test.
+#
 name: Trigger Testing
 run-name: Dispatch operator PR test for ${{ github.event.issue.number || github.event.inputs.pr_number }}
 
