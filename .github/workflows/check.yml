@@ -61,7 +61,9 @@ jobs:
       - name: Install
         run: task setup
       - name: BuildAndLoad
-        run: task build-and-load TAG="$IMG_TAG"
+        run: task build-and-load
+        env:
+          OPERATOR_TAG: ${{ env.IMG_TAG }}
       - name: AddIngress
         run: task kind:ingress
       - name: Ngrok
